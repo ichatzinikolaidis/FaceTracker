@@ -4,24 +4,20 @@
 
 const double VideoFaceDetector::TICK_FREQUENCY = cv::getTickFrequency();
 
-VideoFaceDetector::VideoFaceDetector(const std::string cascadeFilePath, cv::VideoCapture &videoCapture)
-{
-    setFaceCascade(cascadeFilePath);
+VideoFaceDetector::VideoFaceDetector(const std::string cascadeFilePath, cv::VideoCapture &videoCapture) {
+	setFaceCascade(cascadeFilePath);
     setVideoCapture(videoCapture);
 }
 
-void VideoFaceDetector::setVideoCapture(cv::VideoCapture &videoCapture)
-{
+void VideoFaceDetector::setVideoCapture(cv::VideoCapture &videoCapture) {
     m_videoCapture = &videoCapture;
 }
 
-cv::VideoCapture *VideoFaceDetector::videoCapture() const
-{
+cv::VideoCapture *VideoFaceDetector::videoCapture() const {
     return m_videoCapture;
 }
 
-void VideoFaceDetector::setFaceCascade(const std::string cascadeFilePath)
-{
+void VideoFaceDetector::setFaceCascade(const std::string cascadeFilePath) {
     if (m_faceCascade == NULL) {
         m_faceCascade = new cv::CascadeClassifier(cascadeFilePath);
     }
@@ -35,23 +31,19 @@ void VideoFaceDetector::setFaceCascade(const std::string cascadeFilePath)
     }
 }
 
-cv::CascadeClassifier *VideoFaceDetector::faceCascade() const
-{
+cv::CascadeClassifier *VideoFaceDetector::faceCascade() const {
     return m_faceCascade;
 }
 
-void VideoFaceDetector::setResizedWidth(const int width)
-{
+void VideoFaceDetector::setResizedWidth(const int width) {
     m_resizedWidth = std::max(width, 1);
 }
 
-int VideoFaceDetector::resizedWidth() const
-{
+int VideoFaceDetector::resizedWidth() const {
     return m_resizedWidth;
 }
 
-cv::Rect VideoFaceDetector::face() const
-{
+cv::Rect VideoFaceDetector::face() const {
     cv::Rect faceRect = m_trackedFace;
     faceRect.x = (int)(faceRect.x / m_scale);
     faceRect.y = (int)(faceRect.y / m_scale);
@@ -60,33 +52,28 @@ cv::Rect VideoFaceDetector::face() const
     return faceRect;
 }
 
-cv::Point VideoFaceDetector::facePosition() const
-{
+cv::Point VideoFaceDetector::facePosition() const {
     cv::Point facePos;
     facePos.x = (int)(m_facePosition.x / m_scale);
     facePos.y = (int)(m_facePosition.y / m_scale);
     return facePos;
 }
 
-void VideoFaceDetector::setTemplateMatchingMaxDuration(const double s)
-{
+void VideoFaceDetector::setTemplateMatchingMaxDuration(const double s) {
     m_templateMatchingMaxDuration = s;
 }
 
-double VideoFaceDetector::templateMatchingMaxDuration() const
-{
+double VideoFaceDetector::templateMatchingMaxDuration() const {
     return m_templateMatchingMaxDuration;
 }
 
-VideoFaceDetector::~VideoFaceDetector()
-{
+VideoFaceDetector::~VideoFaceDetector() {
     if (m_faceCascade != NULL) {
         delete m_faceCascade;
     }
 }
 
-cv::Rect VideoFaceDetector::doubleRectSize(const cv::Rect &inputRect, const cv::Rect &frameSize) const
-{
+cv::Rect VideoFaceDetector::doubleRectSize(const cv::Rect &inputRect, const cv::Rect &frameSize) const {
     cv::Rect outputRect;
     // Double rect size
     outputRect.width = inputRect.width * 2;
@@ -116,13 +103,11 @@ cv::Rect VideoFaceDetector::doubleRectSize(const cv::Rect &inputRect, const cv::
     return outputRect;
 }
 
-cv::Point VideoFaceDetector::centerOfRect(const cv::Rect &rect) const
-{
+cv::Point VideoFaceDetector::centerOfRect(const cv::Rect &rect) const {
     return cv::Point(rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
-cv::Rect VideoFaceDetector::biggestFace(std::vector<cv::Rect> &faces) const
-{
+cv::Rect VideoFaceDetector::biggestFace(std::vector<cv::Rect> &faces) const {
     assert(!faces.empty());
 
     cv::Rect *biggest = &faces[0];
@@ -136,8 +121,7 @@ cv::Rect VideoFaceDetector::biggestFace(std::vector<cv::Rect> &faces) const
 /*
 * Face template is small patch in the middle of detected face.
 */
-cv::Mat VideoFaceDetector::getFaceTemplate(const cv::Mat &frame, cv::Rect face)
-{
+cv::Mat VideoFaceDetector::getFaceTemplate(const cv::Mat &frame, cv::Rect face) {
     face.x += face.width / 4;
     face.y += face.height / 4;
     face.width /= 2;
@@ -147,8 +131,7 @@ cv::Mat VideoFaceDetector::getFaceTemplate(const cv::Mat &frame, cv::Rect face)
     return faceTemplate;
 }
 
-void VideoFaceDetector::detectFaceAllSizes(const cv::Mat &frame)
-{
+void VideoFaceDetector::detectFaceAllSizes(const cv::Mat &frame) {
     // Minimum face size is 1/5th of screen height
     // Maximum face size is 2/3rds of screen height
     m_faceCascade->detectMultiScale(frame, m_allFaces, 1.1, 3, 0,
@@ -172,8 +155,7 @@ void VideoFaceDetector::detectFaceAllSizes(const cv::Mat &frame)
     m_facePosition = centerOfRect(m_trackedFace);
 }
 
-void VideoFaceDetector::detectFaceAroundRoi(const cv::Mat &frame)
-{
+void VideoFaceDetector::detectFaceAroundRoi(const cv::Mat &frame) {
     // Detect faces sized +/-20% off biggest face in previous search
     m_faceCascade->detectMultiScale(frame(m_faceRoi), m_allFaces, 1.1, 3, 0,
         cv::Size(m_trackedFace.width * 8 / 10, m_trackedFace.height * 8 / 10),
@@ -209,8 +191,7 @@ void VideoFaceDetector::detectFaceAroundRoi(const cv::Mat &frame)
     m_facePosition = centerOfRect(m_trackedFace);
 }
 
-void VideoFaceDetector::detectFacesTemplateMatching(const cv::Mat &frame)
-{
+void VideoFaceDetector::detectFacesTemplateMatching(const cv::Mat &frame) {
     // Calculate duration of template matching
     m_templateMatchingCurrentTime = cv::getTickCount();
     double duration = (double)(m_templateMatchingCurrentTime - m_templateMatchingStartTime) / TICK_FREQUENCY;
@@ -250,8 +231,7 @@ void VideoFaceDetector::detectFacesTemplateMatching(const cv::Mat &frame)
     m_facePosition = centerOfRect(m_trackedFace);
 }
 
-cv::Point VideoFaceDetector::getFrameAndDetect(cv::Mat &frame)
-{
+cv::Point VideoFaceDetector::getFrameAndDetect(cv::Mat &frame) {
     *m_videoCapture >> frame;
 
     // Downscale frame to m_resizedWidth width - keep aspect ratio
@@ -273,7 +253,6 @@ cv::Point VideoFaceDetector::getFrameAndDetect(cv::Mat &frame)
     return m_facePosition;
 }
 
-cv::Point VideoFaceDetector::operator>>(cv::Mat &frame)
-{
+cv::Point VideoFaceDetector::operator>>(cv::Mat &frame) {
     return this->getFrameAndDetect(frame);
 }
