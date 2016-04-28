@@ -4,45 +4,66 @@
 
 #include "VideoFaceDetector.h"
 
-const cv::String WINDOW_NAME("Camera video");
+#include <thread>
+#include <vector>
+#include <mutex>
+static std::mutex barrier;
+
 const cv::String CASCADE_FILE("haarcascade_frontalface_default.xml");
+
+void FindFace(cv::VideoCapture camera, cv::String WINDOW_NAME, bool allow) {
+    cv::Mat frame;
+    VideoFaceDetector detector(CASCADE_FILE, camera);
+    std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
+    detector >> frame;
+    int face_x_position = detector.facePosition().x;
+    int face_y_position = detector.facePosition().y;
+    int rows = frame.rows;
+    int cols = frame.cols;
+    printf("x-position: %d, y-position: %d\n", face_x_position - cols/2, rows/2 - face_y_position);
+
+    cv::rectangle(frame, detector.face(), cv::Scalar(255, 0, 0));
+    cv::circle(frame, detector.facePosition(),30 , cv::Scalar(0, 255, 0));
+
+    if (allow) {
+        cv::imshow(WINDOW_NAME, frame);
+    }
+}
 
 int main(int argc, char** argv) {
     // Try opening camera
     cv::VideoCapture camera(0);
-    //cv::VideoCapture camera("D:\\video.mp4");
     if (!camera.isOpened()) {
         fprintf(stderr, "Error getting camera...\n");
         exit(1);
     }
-
-    cv::namedWindow(WINDOW_NAME, cv::WINDOW_KEEPRATIO | cv::WINDOW_NORMAL);
-
-    VideoFaceDetector detector(CASCADE_FILE, camera);
-    cv::Mat frame;
-    double fps = 0, time_per_frame;
+    int num_threads;
+    bool allow = true;
+    if (argc == 2) num_threads = atoi(argv[1]);
+    else if (argc == 3) {
+        num_threads = atoi(argv[1]);
+        allow = false;
+    }
+    else num_threads = 1;
+    cv::String WINDOW_NAME[num_threads];
+    if (allow) {
+        for (int i = 0; i < num_threads; ++i) {
+            std::string x = "Camera video ";
+            x += std::to_string(i);
+            WINDOW_NAME[i] = x;
+            cv::namedWindow(WINDOW_NAME[i], cv::WINDOW_KEEPRATIO | cv::WINDOW_NORMAL);
+        }
+    }
     while (true) {
-        auto start = cv::getCPUTickCount();
-        detector >> frame;
-        auto end = cv::getCPUTickCount();
+        std::vector<std::thread> th;
+        for (int i = 0; i < num_threads; ++i) {
+            th.push_back(std::thread(FindFace, camera, WINDOW_NAME[i], allow));
+        }
+        for (auto &t : th) {
+            t.join();
+        }
 
-        time_per_frame = (end - start) / cv::getTickFrequency();
-        fps = (15 * fps + (1 / time_per_frame)) / 16;
-
-        printf("Time per frame: %3.3f\tFPS: %3.3f\n", time_per_frame, fps);
-
-        int face_x_position = detector.facePosition().x;
-        int face_y_position = detector.facePosition().y;
-        int rows = frame.rows;
-        int cols = frame.cols;
-        printf("x-position: %d, y-position: %d\n", face_x_position - cols/2, face_y_position - rows/2);
-
-        cv::rectangle(frame, detector.face(), cv::Scalar(255, 0, 0));
-        cv::circle(frame, detector.facePosition(),30 , cv::Scalar(0, 255, 0));
-
-        cv::imshow(WINDOW_NAME, frame);
         if (cv::waitKey(25) == 27) break;
     }
-
     return 0;
 }
