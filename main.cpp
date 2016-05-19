@@ -9,6 +9,8 @@
 #include <mutex>
 static std::mutex barrier;
 
+#include <iostream>
+
 const cv::String CASCADE_FILE("haarcascade_frontalface_default.xml");
 
 void FindFace(cv::VideoCapture camera, cv::String WINDOW_NAME, bool allow) {
@@ -16,16 +18,17 @@ void FindFace(cv::VideoCapture camera, cv::String WINDOW_NAME, bool allow) {
     VideoFaceDetector detector(CASCADE_FILE, camera);
     std::lock_guard<std::mutex> block_threads_until_finish_this_job(barrier);
     detector >> frame;
-    int face_x_position = detector.facePosition().x;
-    int face_y_position = detector.facePosition().y;
-    int rows = frame.rows;
-    int cols = frame.cols;
-    printf("x-position: %d, y-position: %d\n", face_x_position - cols/2, rows/2 - face_y_position);
-
-    cv::rectangle(frame, detector.face(), cv::Scalar(255, 0, 0));
-    cv::circle(frame, detector.facePosition(),30 , cv::Scalar(0, 255, 0));
+    int short face_x_position = detector.facePosition().x;
+    int short face_y_position = detector.facePosition().y;
+    int short rows = frame.rows;
+    int short cols = frame.cols;
+    unsigned short int width = detector.face().width;
+    unsigned short int height = detector.face().height;
+    double area = width*height/2.0;
 
     if (allow) {
+        cv::rectangle(frame, detector.face(), cv::Scalar(255, 0, 0));
+        cv::circle(frame, detector.facePosition(), 30 , cv::Scalar(0, 255, 0));
         cv::imshow(WINDOW_NAME, frame);
     }
 }
